@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auto-healing web tier</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      display: grid; place-items: center; min-height: 100vh; margin: 0;
+      background: #0f1115; color: #e6e8eb;
+    }
+    .card {
+      border: 1px solid #2a2f3a; border-radius: 12px; padding: 2.5rem 3rem;
+      background: #161a22; max-width: 34rem;
+    }
+    h1 { margin: 0 0 .5rem; font-size: 1.5rem; font-weight: 600; }
+    p { margin: .35rem 0; color: #9aa4b2; line-height: 1.5; }
+    code {
+      background: #0f1115; padding: .15rem .4rem; border-radius: 4px;
+      border: 1px solid #2a2f3a; font-size: .9em;
+    }
+    .host { margin-top: 1.25rem; font-size: .9rem; color: #6b7480; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>It works.</h1>
+    <p>Served from a container on an Azure VM Scale Set, behind a Standard Load Balancer.</p>
+    <p>Delete an instance and the platform rebuilds it. Refresh a few times and
+       you should land on different hosts.</p>
+    <p class="host">Hostname is shown by the server, not this page — check with
+       <code>curl -sI &lt;lb-ip&gt;</code> or the access logs.</p>
+  </div>
+</body>
+</html>
