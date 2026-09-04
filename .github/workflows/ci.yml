@@ -1,0 +1,135 @@
+# Lint / validate / plan-only. Nothing here applies anything.
+#
+# Plan needs read access to Azure and to state, so it is gated on credentials
+# being present — the lint and validate jobs run on every PR regardless, including
+# from forks where secrets are unavailable.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # OIDC federation to Azure — no stored client secret
+
+env:
+  TF_VERSION: "1.9.8"
+  WORKING_DIR: terraform
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # -recursive so modules are checked too, not just the root.
+      - name: terraform fmt
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform fmt -check -recursive -diff
+
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: tflint
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          tflint --init
+          tflint --recursive --minimum-failure-severity=warning
+
+      - name: hadolint (Dockerfile)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: docker/Dockerfile
+
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # -backend=false: validate is offline and needs no state or credentials,
+      # so it works on PRs from forks.
+      - name: terraform init
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform init -backend=false -input=false
+
+      - name: terraform validate
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform validate -no-color
+
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Build only — no push. Publishing is a deliberate manual step so CI
+      # cannot silently change what production instances pull.
+      - name: Build image
+        working-directory: docker
+        run: docker build -t autoheal-web:ci .
+
+      - name: Smoke test the container
+        run: |
+          docker run -d --name web -p 8080:80 autoheal-web:ci
+          for i in $(seq 1 15); do
+            if curl -fsS http://localhost:8080 >/dev/null; then
+              echo "container serving"; exit 0
+            fi
+            sleep 1
+          done
+          echo "container did not serve within 15s"; docker logs web; exit 1
+
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    needs: [lint, validate]
+    # Skipped rather than failed when credentials are absent.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: terraform init
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform init -input=false
+
+      - name: terraform plan
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          ARM_USE_OIDC: "true"
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          # input.tfvars is gitignored, so CI supplies the required variables as
+          # TF_VAR_ environment variables instead of via -var-file.
+          TF_VAR_tenant_id: ${{ secrets.AZURE_TENANT_ID }}
+          TF_VAR_subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          TF_VAR_container_image: ${{ vars.CONTAINER_IMAGE }}
+          TF_VAR_admin_ssh_public_key: ${{ vars.ADMIN_SSH_PUBLIC_KEY }}
+        run: terraform plan -input=false -no-color -lock=false
