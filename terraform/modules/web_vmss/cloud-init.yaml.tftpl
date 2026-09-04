@@ -1,0 +1,43 @@
+#cloud-config
+# Runs once on every instance the scale set creates — including replacements,
+# which is what makes a rebuilt instance identical to its predecessors.
+
+package_update: true
+package_upgrade: false
+
+packages:
+  - docker.io
+
+write_files:
+  # A systemd unit rather than a bare `docker run`: cloud-init only runs at
+  # first boot, so a container started by runcmd would not come back after a
+  # reboot. --restart=always covers a crashed container but not a rebooted VM.
+  - path: /etc/systemd/system/web-container.service
+    permissions: "0644"
+    content: |
+      [Unit]
+      Description=Static web page container
+      Requires=docker.service
+      After=docker.service network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Restart=always
+      RestartSec=5
+      TimeoutStartSec=0
+      ExecStartPre=-/usr/bin/docker rm -f web
+      ExecStartPre=/usr/bin/docker pull ${container_image}
+      ExecStart=/usr/bin/docker run --rm --name web -p 80:80 ${container_image}
+      ExecStop=/usr/bin/docker stop web
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - [systemctl, daemon-reload]
+  - [systemctl, enable, --now, docker]
+  - [systemctl, enable, --now, web-container.service]
+
+# Surfaces in the boot diagnostics serial log, so you can tell "still starting"
+# from "failed to pull" without opening a shell.
+final_message: "web-container ready after $UPTIME seconds"
