@@ -6,11 +6,10 @@
 
 name: CI
 
+# Manual only. Deliberate: this is a demo repo with no shared branch to protect,
+# and the plan job needs Azure credentials that shouldn't be spent on every
+# push. Add `pull_request:` here to make it a required status check.
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -99,8 +98,6 @@ jobs:
     name: Plan
     runs-on: ubuntu-latest
     needs: [lint, validate]
-    # Skipped rather than failed when credentials are absent.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v4
 
