@@ -1,0 +1,54 @@
+# =============================================================================
+# Terraform — generated artefacts only. The .tf source IS the deliverable.
+# =============================================================================
+
+# Provider binaries and module cache — hundreds of MB, machine-specific
+.terraform/
+
+# State. Contains resource IDs and can contain secrets in plain text.
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Saved plans — binary, environment-specific, and can embed variable values
+*.tfplan
+*.tfplan.*
+
+# Crash reports
+crash.log
+crash.*.log
+
+# NOTE: .terraform.lock.hcl is deliberately NOT ignored. It pins provider
+# versions so `terraform init` gives a reviewer the same providers this was
+# built against. Commit it.
+
+# =============================================================================
+# Real variable values
+# =============================================================================
+# terraform.tfvars.example IS committed — it documents what is needed.
+# terraform.tfvars holds the actual subscription id and SSH key.
+terraform.tfvars
+input.tfvars
+*.auto.tfvars
+*.auto.tfvars.json
+
+# =============================================================================
+# Keys and secrets
+# =============================================================================
+*.pem
+*.key
+*_key
+id_rsa*
+id_ed25519*
+.env
+
+# =============================================================================
+# Editor / OS
+# =============================================================================
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+gitcommands
+
