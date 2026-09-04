@@ -1,0 +1,78 @@
+# Copy to input.tfvars and fill in. input.tfvars is gitignored.
+#
+#   cp input.tfvars.example input.tfvars
+#   az login --tenant <your-tenant-id>
+#   terraform init
+#   terraform plan -var-file=input.tfvars
+#
+# Every root variable is listed, including ones that have defaults in
+# variables.tf, so the whole deployed configuration is readable in one place.
+
+# ---------------------------------------------------------------------------
+# Identity — the only two values you must supply from your own subscription
+# ---------------------------------------------------------------------------
+tenant_id       = "00000000-0000-0000-0000-000000000000"
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+# ---------------------------------------------------------------------------
+# Naming — produces rg-autoheal-dev-aue-001, vmss-autoheal-dev-aue-001, ...
+# ---------------------------------------------------------------------------
+workload      = "autoheal" # 2-12 lowercase alphanumeric
+environment   = "dev"      # dev | tst | stg | prd
+location      = "australiaeast"
+location_code = "aue"
+instance      = "001"
+
+# ---------------------------------------------------------------------------
+# Tagging
+# ---------------------------------------------------------------------------
+owner       = "you@example.com"
+cost_centre = "personal"
+
+extra_tags = {
+  Purpose = "auto-healing web tier demo"
+}
+
+# ---------------------------------------------------------------------------
+# Network
+# ---------------------------------------------------------------------------
+# web_subnet_prefix must sit inside vnet_address_space.
+vnet_address_space = ["10.60.0.0/22"]
+web_subnet_prefix  = "10.60.0.0/24"
+
+# "Internet" makes the page publicly reachable, which is the point of the
+# exercise. Narrow it to your own address to keep it private,
+# e.g. "203.0.113.45/32"
+allowed_http_source = "Internet"
+
+# ---------------------------------------------------------------------------
+# Compute
+# ---------------------------------------------------------------------------
+# This image is PUBLIC on Docker Hub, so you can deploy without building or
+# pushing anything. Build your own from ../docker if you prefer.
+container_image = "docker.io/rijaljegam/autoheal-web:1.0.0"
+
+# B1s is the cheapest size that comfortably runs Docker + nginx.
+vm_sku       = "Standard_B1s"
+os_disk_type = "StandardSSD_LRS" # Standard_LRS is cheaper but boots slower
+
+# instance_count must be >= 2 (the n+1 requirement) and is also the autoscale
+# minimum — that minimum is what rebuilds an instance you delete.
+instance_count     = 2
+instance_count_max = 3
+
+# Scale set instance zones. Set to [] where the region has no zone support, or
+# where the chosen VM size has zonal capacity restrictions — B-series often
+# does, which shows up as SkuNotAvailable at scale set creation.
+availability_zones = []
+
+# Load balancer public IP zones. Independent of the above — a public IP has no
+# compute capacity constraint, so the frontend can stay zone-redundant.
+lb_frontend_zones = ["1", "2", "3"]
+
+admin_username = "azureuser"
+
+# Paste the key itself, not a path:
+#   ssh-keygen -t ed25519 -C "autoheal" -f ~/.ssh/autoheal -N ""
+#   cat ~/.ssh/autoheal.pub
+admin_ssh_public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... you@host"
