@@ -28,7 +28,7 @@ crash.*.log
 # terraform.tfvars.example IS committed — it documents what is needed.
 # terraform.tfvars holds the actual subscription id and SSH key.
 terraform.tfvars
-input.tfvars
+
 *.auto.tfvars
 *.auto.tfvars.json
 
@@ -52,4 +52,3 @@ id_ed25519*
 Thumbs.db
 gitcommands
 
-ci.yml
