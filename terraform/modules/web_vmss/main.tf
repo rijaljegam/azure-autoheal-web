@@ -24,8 +24,13 @@ resource "azurerm_linux_virtual_machine_scale_set" "this" {
   instances = var.instance_count
   zones     = var.zones
 
-  # Spread across zones as evenly as possible rather than packing.
-  zone_balance = length(var.zones) > 1
+  # Listing zones already gives best-effort spread across them. zone_balance
+  # makes that balance STRICT: the platform fails a scale operation it cannot
+  # place evenly rather than placing it unevenly. Not worth it at 2 instances
+  # under a 4 vCPU quota, where it can only turn a degraded placement into a
+  # failed one. The property is also immutable — changing it destroys and
+  # recreates the scale set.
+  zone_balance = false
 
   admin_username                  = var.admin_username
   disable_password_authentication = true
