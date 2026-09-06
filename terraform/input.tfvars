@@ -65,17 +65,20 @@ os_disk_type = "StandardSSD_LRS"
 
 # n+1: two instances means losing one still serves traffic. instance_count is
 # also the autoscale MINIMUM, which is what rebuilds a deleted instance.
-# Max kept at 3 so a runaway scale-out cannot quietly triple the bill.
 # Total Regional vCPU quota on this subscription is 4. At 2 vCPUs per B2s
 # instance, 2 instances consumes the entire allowance — so max MUST be 2, or
 # autoscale would attempt a scale-out that Azure rejects.
 instance_count     = 2
 instance_count_max = 2
 
-# Empty: Standard_B1s has zonal capacity restrictions in australiaeast
-# (SkuNotAvailable on zonal allocation). Regional allocation works. The load
-# balancer frontend stays zone-redundant regardless — see lb_frontend_zones.
-availability_zones = []
+# Standard_B2ats_v2 has zonal capacity in australiaeast (verified). The
+# SkuNotAvailable problem was specific to Standard_B1s — do not generalise it
+# to all B-series. Spreading across all three zones means a single zone outage
+# leaves at least one instance serving.
+#
+# NOTE: zones cannot be changed in place. Editing this list destroys and
+# recreates the scale set.
+availability_zones = ["1", "2", "3"]
 
 # Public IP zone redundancy — no compute capacity constraint applies here.
 lb_frontend_zones = ["1", "2", "3"]

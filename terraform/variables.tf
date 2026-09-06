@@ -188,12 +188,12 @@ variable "admin_ssh_public_key" {
   }
 }
 
-# Empty means regional allocation, which is the default because B-series sizes
-# often have no zonal capacity. Set to ["1", "2", "3"] if your vm_sku does.
+# Set to [] for regional allocation if your vm_sku has no zonal capacity in the
+# target region (SkuNotAvailable). Standard_B2ats_v2 does in australiaeast.
 variable "availability_zones" {
   description = "Zones to spread scale set instances across."
   type        = list(string)
-  default     = []
+  default     = ["1", "2", "3"]
 }
 
 # Separate from availability_zones on purpose: a public IP has no compute

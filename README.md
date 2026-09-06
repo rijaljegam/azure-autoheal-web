@@ -91,7 +91,7 @@ placeholder is caught here by variable validation rather than part-way through
 an apply. Once it looks right:
 
 ```bash
-terraform apply -var-file=input.tfvars
+terraform apply -var-file=input.tfvars # not required only if you would like to apply a real infra
 
 curl "$(terraform output -raw site_url)"      # allow ~3 min for cloud-init
 ```
@@ -361,6 +361,15 @@ load-balanced tier serving two different pages.
 Triggered manually (`workflow_dispatch`) only — there is no shared branch to
 protect here. Add a `pull_request:` trigger to make it a required status check.
 
+> **`plan` does not run in this repository as published.** It needs a federated
+> identity credential in Azure, which is specific to whoever owns the
+> subscription — so it cannot be shipped with the code. `lint`, `validate` and
+> `docker-build` run and pass without any setup.
+>
+> To run `plan` yourself: fork or clone the repo, create a FIC against **your**
+> subscription using the commands below, add the three repository secrets, and
+> trigger the workflow. It takes about five minutes.
+
 ### `plan` requires a federated identity credential in Azure
 
 `plan` authenticates with OIDC, so no client secret is stored in GitHub — but
@@ -438,11 +447,12 @@ final configuration:
   instance replacement, which is what the brief requires.
 - `Standard_B1s` returned **SkuNotAvailable / Capacity Restrictions** in
   Australia East, both zonally and regionally. Moved to `Standard_B2ats_v2`.
-- Zonal allocation for B-series was unavailable, so `availability_zones = []`
-  and instances are allocated regionally. The load balancer frontend stays
-  zone-redundant, since a public IP has no compute capacity constraint. A full
-  zone outage could therefore take both instances — a capacity-driven
-  compromise, not a design preference.
+- The `SkuNotAvailable` result above was specific to `Standard_B1s`, not to
+  B-series generally. `Standard_B2ats_v2` does have zonal capacity in Australia
+  East, so `availability_zones = ["1", "2", "3"]` and instances are spread
+  across all three zones. The load balancer frontend is zone-redundant to
+  match. Note that `zones` cannot be changed in place — moving between zonal
+  and regional allocation destroys and recreates the scale set.
 - No inbound SSH. Instances have no public IPs and the NSG permits port 80
   only, so `admin_ssh_public_key` is a required input that cannot be used for
   access. Debugging is via `az vmss run-command invoke` and the serial console.

@@ -37,10 +37,13 @@ variable "container_image" {
   type        = string
 }
 
+# x86-64, 2 vCPU / 1 GiB, with zonal capacity in australiaeast. Not
+# Standard_B1s, which hits Capacity Restrictions there. Not a Bpsv2 size —
+# those are ARM64 and an amd64 image fails with an exec format error.
 variable "vm_sku" {
   description = "VM size."
   type        = string
-  default     = "Standard_B1s"
+  default     = "Standard_B2ats_v2"
 }
 
 variable "os_disk_type" {
@@ -56,9 +59,14 @@ variable "instance_count" {
 }
 
 variable "instance_count_max" {
-  description = "Autoscale maximum."
+  description = "Autoscale maximum. Must be >= instance_count."
   type        = number
-  default     = 4
+  default     = 2
+
+  validation {
+    condition     = var.instance_count_max >= var.instance_count
+    error_message = "instance_count_max must be >= instance_count; Azure autoscale requires minimum <= maximum."
+  }
 }
 
 variable "admin_username" {
@@ -72,6 +80,9 @@ variable "admin_ssh_public_key" {
   type        = string
 }
 
+# Also drives zone_balance in main.tf, which must be false when fewer than two
+# zones are set. Empty means regional allocation — the fallback when a SKU has
+# no zonal capacity in the target region (SkuNotAvailable).
 variable "zones" {
   description = "Availability zones to spread instances across."
   type        = list(string)
